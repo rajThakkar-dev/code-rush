@@ -1,3 +1,7 @@
+import roasts from '../../msg.json';
+
+function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
 export function calculateMetrics(target, typed, elapsedMs) {
   const totalCharacters = target.length;
   const typedCharacters = typed.length;
@@ -26,25 +30,25 @@ export function formatDuration(ms) {
 }
 
 export function performanceMessage(wpm) {
-  if (wpm < 20) return 'Even your rubber duck types faster. Keep going!';
-  if (wpm < 35) return 'You type like you are reading the docs for the first time. Respect.';
-  if (wpm < 50) return 'Stack Overflow was loading faster than you type. Almost there!';
-  if (wpm < 65) return 'Solid. You can definitely survive a live coding interview... probably.';
-  if (wpm < 80) return 'Impressive! You type faster than most PRs get reviewed.';
-  if (wpm < 100) return 'You are in "senior dev who skipped the coffee" territory. Respect.';
-  if (wpm < 120) return 'Are you a 10x developer? Because this is 10x speed. Certified typing menace.';
-  if (wpm < 150) return 'GitHub Copilot is scared. You are basically AI at this point.';
-  return 'SKYNET HAS ENTERED THE CHAT. You are no longer human. We accept our new overlord.';
+  if (wpm < 20)  return pick(roasts.rubber_duck);
+  if (wpm < 35)  return pick(roasts.junior_dev);
+  if (wpm < 50)  return pick(roasts.mid_level);
+  if (wpm < 65)  return pick(roasts.senior_dev);
+  if (wpm < 80)  return pick(roasts.pr_destroyer);
+  if (wpm < 100) return pick(roasts.ten_x_dev);
+  if (wpm < 120) return pick(roasts.keyboard_ninja);
+  if (wpm < 150) return pick(roasts.ai_competitor);
+  return pick(roasts.skynet);
 }
 
 export function performanceBadge(wpm) {
-  if (wpm < 20) return { label: 'Rubber Duck', emoji: '🦆', color: 'text-slate-400' };
-  if (wpm < 35) return { label: 'Junior Dev', emoji: '🐣', color: 'text-yellow-400' };
-  if (wpm < 50) return { label: 'Mid-level', emoji: '☕', color: 'text-amber-400' };
-  if (wpm < 65) return { label: 'Senior Dev', emoji: '🧠', color: 'text-blue-400' };
-  if (wpm < 80) return { label: 'PR Destroyer', emoji: '💥', color: 'text-orange-400' };
-  if (wpm < 100) return { label: '10x Dev', emoji: '🚀', color: 'text-purple-400' };
+  if (wpm < 20)  return { label: 'Rubber Duck',    emoji: '🦆', color: 'text-slate-400' };
+  if (wpm < 35)  return { label: 'Junior Dev',     emoji: '🐣', color: 'text-yellow-400' };
+  if (wpm < 50)  return { label: 'Mid-level',      emoji: '☕', color: 'text-amber-400' };
+  if (wpm < 65)  return { label: 'Senior Dev',     emoji: '🧠', color: 'text-blue-400' };
+  if (wpm < 80)  return { label: 'PR Destroyer',   emoji: '💥', color: 'text-orange-400' };
+  if (wpm < 100) return { label: '10x Dev',        emoji: '🚀', color: 'text-purple-400' };
   if (wpm < 120) return { label: 'Keyboard Ninja', emoji: '⚔️', color: 'text-pink-400' };
-  if (wpm < 150) return { label: 'AI Competitor', emoji: '🤖', color: 'text-cyan-400' };
-  return { label: 'SKYNET', emoji: '👾', color: 'text-red-400' };
+  if (wpm < 150) return { label: 'AI Competitor',  emoji: '🤖', color: 'text-cyan-400' };
+  return           { label: 'SKYNET',            emoji: '👾', color: 'text-red-400' };
 }
