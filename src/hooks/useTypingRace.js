@@ -4,16 +4,21 @@ import { createId, STORAGE_KEYS, safeGet, safeSet } from '../utils/storage';
 
 const initialState = { target: '', typed: '', running: false, finished: false, startedAt: null, stoppedAt: null };
 
-export function useTypingRace({ snippet, language, difficulty, lineCount, onFinish }) {
+export function useTypingRace({ snippet, language, difficulty, lineCount, onFinish, instantDeath = false }) {
   const [race, setRace] = useState({ ...initialState, target: snippet || '' });
   const [now, setNow] = useState(0);
+  const [shaking, setShaking] = useState(false);
   const inputRef = useRef(null);
   const completedRef = useRef(false);
+  const deathTimeoutRef = useRef(null);
 
   useEffect(() => {
     setRace({ ...initialState, target: snippet || '' });
     completedRef.current = false;
   }, [snippet]);
+
+  // Cleanup death timeout on unmount
+  useEffect(() => () => clearTimeout(deathTimeoutRef.current), []);
 
   useEffect(() => {
     if (!race.running) return undefined;
@@ -46,20 +51,48 @@ export function useTypingRace({ snippet, language, difficulty, lineCount, onFini
 
   const handleChange = useCallback((value) => {
     if (completedRef.current) return;
+
     setRace((prev) => {
       if (prev.finished) return prev;
+
       const firstKeystroke = !prev.running && value.length > 0;
-      const next = { ...prev, typed: value, running: firstKeystroke ? true : prev.running, startedAt: firstKeystroke ? performance.now() : prev.startedAt };
+      const next = {
+        ...prev,
+        typed: value,
+        running: firstKeystroke ? true : prev.running,
+        startedAt: firstKeystroke ? performance.now() : prev.startedAt,
+      };
+
+      // Instant Death: if the last typed character is wrong, shake and reset
+      if (instantDeath && value.length > 0) {
+        const lastIdx = value.length - 1;
+        if (value[lastIdx] !== prev.target[lastIdx]) {
+          setShaking(true);
+          clearTimeout(deathTimeoutRef.current);
+          deathTimeoutRef.current = setTimeout(() => {
+            setShaking(false);
+            completedRef.current = false;
+            setRace({ ...initialState, target: prev.target });
+            requestAnimationFrame(() => inputRef.current?.focus());
+          }, 400);
+          return next; // keep the wrong char visible briefly before reset
+        }
+      }
+
+      // Normal finish check
       if (next.target && value.length >= next.target.length) {
         const done = { ...next, typed: value.slice(0, next.target.length), running: false, finished: true, stoppedAt: performance.now() };
         queueMicrotask(() => finish(done));
         return done;
       }
+
       return next;
     });
-  }, [finish]);
+  }, [finish, instantDeath]);
 
   const restart = useCallback(() => {
+    clearTimeout(deathTimeoutRef.current);
+    setShaking(false);
     completedRef.current = false;
     setRace({ ...initialState, target: snippet || '' });
     inputRef.current?.focus();
@@ -67,5 +100,5 @@ export function useTypingRace({ snippet, language, difficulty, lineCount, onFini
 
   const focus = useCallback(() => inputRef.current?.focus(), []);
 
-  return { race, metrics, elapsedMs, inputRef, handleChange, restart, focus };
+  return { race, metrics, elapsedMs, inputRef, handleChange, restart, focus, shaking };
 }

@@ -307,9 +307,55 @@ button { cursor: pointer; }
 }
 
 /* Reduced motion */
+/* Instant Death shake */
+@keyframes cr-shake {
+  0%   { transform: translateX(0); }
+  15%  { transform: translateX(-6px) rotate(-0.5deg); }
+  30%  { transform: translateX(6px)  rotate(0.5deg); }
+  45%  { transform: translateX(-5px); }
+  60%  { transform: translateX(5px); }
+  75%  { transform: translateX(-3px); }
+  90%  { transform: translateX(3px); }
+  100% { transform: translateX(0); }
+}
+.cr-shake {
+  animation: cr-shake 0.4s ease-in-out;
+  outline: 2px solid var(--char-error);
+  outline-offset: 3px;
+  border-radius: 1rem;
+}
+
+/* Zen mode: hidden stats row */
+.zen-stats-hidden {
+  opacity: 0;
+  pointer-events: none;
+  user-select: none;
+  height: 0;
+  overflow: hidden;
+  margin: 0;
+}
+
+/* Zen mode: reveal overlay shown instead of stats */
+.zen-overlay {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1rem;
+  border-radius: 0.875rem;
+  font-size: 0.75rem;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--text-subtle);
+  border: 1px solid var(--border);
+  background: var(--accent-glow);
+  letter-spacing: 0.05em;
+}
+
+/* Reduced motion */
 .reduced-motion *, .reduced-motion *::before, .reduced-motion *::after {
   animation-duration: .001ms !important;
   animation-iteration-count: 1 !important;
   scroll-behavior: auto !important;
   transition-duration: .001ms !important;
 }
+

@@ -9,8 +9,8 @@ export const DEFAULT_SETTINGS = {
   language: '',
   difficulty: 'medium',
   snippetLength: 'medium',
-  sound: false,
-  reducedMotion: false,
+  instantDeath: false,
+  zenMode: false,
 };
 
 export function safeGet(key, fallback) {
