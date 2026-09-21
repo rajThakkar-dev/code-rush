@@ -72,22 +72,22 @@ export default function CodeDisplay({ target, typed, inputRef, onChange, onFocus
   return (
     <div className="cr-panel overflow-hidden">
       {/* Faux editor title bar */}
-      <div className="flex items-center justify-between border-b border-white/[0.06] px-4 py-2.5">
+      <div className="flex items-center justify-between px-4 py-2.5" style={{ borderBottom: '1px solid var(--border)' }}>
         <div className="flex items-center gap-1.5">
           <span className="h-3 w-3 rounded-full bg-rose-400/80" />
           <span className="h-3 w-3 rounded-full bg-amber-300/80" />
           <span className="h-3 w-3 rounded-full bg-emerald-400/80" />
-          <span className="ml-3 font-mono text-xs text-slate-500">challenge.code</span>
+          <span className="ml-3 font-mono text-xs" style={{ color: 'var(--text-muted)' }}>challenge.code</span>
         </div>
-        <span className="font-mono text-[11px] text-slate-600">exact match required</span>
+        <span className="font-mono text-[11px]" style={{ color: 'var(--text-subtle)' }}>exact match required</span>
       </div>
 
       {/* Code area */}
       <div
         ref={containerRef}
-        className="relative overflow-auto bg-[#060d17] code-scroll cr-code-area"
+        className="relative overflow-auto code-scroll cr-code-area"
         onClick={onFocus}
-        style={{ minHeight: '320px', maxHeight: '520px' }}
+        style={{ minHeight: '320px', maxHeight: '520px', background: 'var(--bg-base)' }}
       >
         {/* Line numbers + code characters */}
         <pre className="race-code pointer-events-none relative z-10 whitespace-pre p-0 text-slate-500 flex" aria-hidden="true">
@@ -178,7 +178,7 @@ export default function CodeDisplay({ target, typed, inputRef, onChange, onFocus
       </div>
 
       {/* Legend bar */}
-      <div className="flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-white/[0.06] px-4 py-2.5 text-xs text-slate-500">
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-2 px-4 py-2.5 text-xs" style={{ borderTop: '1px solid var(--border)', color: 'var(--text-muted)' }}>
         <span className="inline-flex items-center gap-1.5">
           <i className="h-2 w-2 rounded-full bg-emerald-400 inline-block" />
           Correct

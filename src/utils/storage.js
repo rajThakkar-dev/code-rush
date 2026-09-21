@@ -2,6 +2,7 @@ export const STORAGE_KEYS = {
   history: 'coderush_race_history',
   settings: 'coderush_settings',
   stats: 'coderush_user_stats',
+  theme: 'coderush_theme',
 };
 
 export const DEFAULT_SETTINGS = {
