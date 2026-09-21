@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, CheckCircle2, Code2, RefreshCw, Settings2, Play } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Code2, Eye, RefreshCw, Settings2, Play, Skull } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { getLanguages } from '@whitep4nth3r/random-code';
 import CodeDisplay from '../components/CodeDisplay';
@@ -54,12 +54,13 @@ export default function Practice({ settings, setSettings }) {
 
   const onFinish = useCallback((raceResult) => { setResult(raceResult); }, []);
 
-  const { race, metrics, elapsedMs, inputRef, handleChange, restart, focus } = useTypingRace({
+  const { race, metrics, elapsedMs, inputRef, handleChange, restart, focus, shaking } = useTypingRace({
     snippet: snippet?.code || '',
     language: selectedLanguage,
     difficulty: settings.difficulty,
     lineCount: snippet?.lineCount || 0,
     onFinish,
+    instantDeath: settings.instantDeath,
   });
 
   useEffect(() => {
@@ -76,7 +77,6 @@ export default function Practice({ settings, setSettings }) {
       const generated = generateSnippet(settings.language, settings.snippetLength, settings.difficulty);
       setSnippet(generated);
       setLoading(false);
-      // Auto-focus the typing area as soon as snippet loads
       requestAnimationFrame(() => {
         setTimeout(() => inputRef.current?.focus(), 50);
       });
@@ -86,7 +86,7 @@ export default function Practice({ settings, setSettings }) {
     }
   }
 
-  // Auto-focus when snippet appears in DOM (snippet state set + race.target populated)
+  // Auto-focus when snippet appears in DOM
   useEffect(() => {
     if (snippet && race.target) {
       setTimeout(() => inputRef.current?.focus(), 80);
@@ -94,6 +94,9 @@ export default function Practice({ settings, setSettings }) {
   }, [snippet, race.target]);
 
   function newSnippet() { startRace(); }
+
+  // Zen mode: hide stats while actively racing, show once finished
+  const zenActive = settings.zenMode && race.running && !race.finished;
 
   if (!snippet || !race.target) return (
     <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-12">
@@ -119,6 +122,19 @@ export default function Practice({ settings, setSettings }) {
           <p className="mt-2 text-sm" style={{ color: 'var(--text-muted)' }}>
             Pick a language and difficulty. We generate fresh code, you type it. Simple. Brutal. Educational.
           </p>
+          {/* Active mode indicators */}
+          <div className="mt-3 flex flex-wrap gap-2">
+            {settings.instantDeath && (
+              <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium" style={{ background: 'rgba(251,113,133,0.1)', color: '#fda4af', border: '1px solid rgba(251,113,133,0.2)' }}>
+                <Skull size={11} /> Instant Death ON
+              </span>
+            )}
+            {settings.zenMode && (
+              <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium" style={{ background: 'var(--accent-glow)', color: 'var(--accent)', border: '1px solid var(--tag-border)' }}>
+                <Eye size={11} /> Zen Mode ON
+              </span>
+            )}
+          </div>
         </div>
         <RaceConfiguration
           languages={languages}
@@ -148,6 +164,16 @@ export default function Practice({ settings, setSettings }) {
             <div className="flex items-center gap-2 font-mono text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
               <Code2 size={16} style={{ color: 'var(--accent)' }} />
               CodeRush
+              {settings.instantDeath && (
+                <span className="ml-1 inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-bold" style={{ background: 'rgba(251,113,133,0.12)', color: '#fda4af' }}>
+                  <Skull size={9} /> INSTANT DEATH
+                </span>
+              )}
+              {settings.zenMode && !settings.instantDeath && (
+                <span className="ml-1 inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-bold" style={{ background: 'var(--accent-glow)', color: 'var(--accent)' }}>
+                  <Eye size={9} /> ZEN
+                </span>
+              )}
             </div>
             <div className="mt-0.5 text-xs" style={{ color: 'var(--text-subtle)' }}>
               {selectedLanguage?.name} &middot; {snippet.lineCount} lines &middot; {settings.difficulty}
@@ -167,22 +193,39 @@ export default function Practice({ settings, setSettings }) {
         </div>
       </div>
 
-      <RaceStats metrics={metrics} elapsedMs={elapsedMs} onRestart={restart} progress={metrics.progress} />
-
-      <div
-        className="mt-4 flex items-center justify-between rounded-xl px-4 py-3 text-xs"
-        style={{ border: '1px solid var(--border)', background: 'var(--accent-glow)', color: 'var(--text-muted)' }}
-      >
-        <span className="inline-flex items-center gap-2">
-          <CheckCircle2 size={14} style={{ color: '#34d399' }} />
-          Timer starts with your first keystroke. No pressure. All pressure.
-        </span>
-        <span className="font-mono" style={{ color: 'var(--accent)' }}>
-          {formatWpm(metrics.wpm)} WPM
-        </span>
+      {/* Stats bar: hidden during zen mode race, visible before/after */}
+      <div className={zenActive ? 'zen-stats-hidden' : ''}>
+        <RaceStats metrics={metrics} elapsedMs={elapsedMs} onRestart={restart} progress={metrics.progress} />
       </div>
 
-      <div className="mt-4" onClick={focus}>
+      {/* Zen mode active overlay shown in place of stats */}
+      {zenActive && (
+        <div className="zen-overlay">
+          <Eye size={13} />
+          Zen mode. No stats. Just you and the code. You've got this.
+        </div>
+      )}
+
+      {/* Hint bar: hidden during zen mode, always show WPM after finish */}
+      {!zenActive && (
+        <div
+          className="mt-4 flex items-center justify-between rounded-xl px-4 py-3 text-xs"
+          style={{ border: '1px solid var(--border)', background: 'var(--accent-glow)', color: 'var(--text-muted)' }}
+        >
+          <span className="inline-flex items-center gap-2">
+            <CheckCircle2 size={14} style={{ color: '#34d399' }} />
+            {settings.instantDeath
+              ? 'One wrong key resets the race. No mercy. No survivors.'
+              : 'Timer starts with your first keystroke. No pressure. All pressure.'}
+          </span>
+          <span className="font-mono" style={{ color: 'var(--accent)' }}>
+            {formatWpm(metrics.wpm)} WPM
+          </span>
+        </div>
+      )}
+
+      {/* Code editor - shake on instant death error */}
+      <div className={`mt-4 ${shaking ? 'cr-shake' : ''}`} onClick={focus}>
         <CodeDisplay
           target={race.target}
           typed={race.typed}

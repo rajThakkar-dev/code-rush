@@ -26,7 +26,6 @@ export default function App(){
 
   useEffect(() => {
     safeSet(STORAGE_KEYS.settings, settings);
-    document.documentElement.classList.toggle('reduced-motion', Boolean(settings.reducedMotion));
   }, [settings]);
 
   useEffect(() => {
