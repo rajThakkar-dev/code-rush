@@ -1,4 +1,4 @@
-import { Eye, EyeOff, Skull, Shield } from 'lucide-react';
+import { Bot, Eye, EyeOff, Skull, Shield } from 'lucide-react';
 import { DifficultySelector, LanguageSelector, SnippetLengthSelector } from './Selector';
 
 function Toggle({ on, onClick }) {
@@ -94,6 +94,19 @@ export default function SettingsPanel({ settings, languages, onChange }) {
           }
           on={settings.zenMode}
           onClick={() => onChange('zenMode', !settings.zenMode)}
+        />
+
+        {/* VS Bot Mode */}
+        <SettingRow
+          icon={Bot}
+          label="VS Bot Mode"
+          description={
+            settings.vsBot
+              ? 'Racing a bot tuned to be slightly slower than your avg WPM. Beat it and feel smug.'
+              : 'Enable to race against an AI bot calibrated to just below your average typing speed.'
+          }
+          on={settings.vsBot}
+          onClick={() => onChange('vsBot', !settings.vsBot)}
         />
 
       </div>

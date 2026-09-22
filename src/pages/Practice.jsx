@@ -1,14 +1,23 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, CheckCircle2, Code2, Eye, RefreshCw, Settings2, Play, Skull } from 'lucide-react';
+import { ArrowLeft, Bot, CheckCircle2, Code2, Eye, RefreshCw, Settings2, Play, Skull } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { getLanguages } from '@whitep4nth3r/random-code';
 import CodeDisplay from '../components/CodeDisplay';
 import RaceConfiguration from '../components/RaceConfiguration';
 import RaceStats from '../components/RaceStats';
+import BotRacer from '../components/BotRacer';
+import BotWinsModal from '../components/BotWinsModal';
+import PasteRoastModal from '../components/PasteRoastModal';
 import { generateSnippet, normalizeLanguages } from '../utils/snippet';
-import { DEFAULT_SETTINGS, STORAGE_KEYS, safeGet, safeSet } from '../utils/storage';
+import { DEFAULT_SETTINGS, STORAGE_KEYS, safeGet, safeSet, getUserAvgWpm } from '../utils/storage';
 import { useTypingRace } from '../hooks/useTypingRace';
 import { formatWpm } from '../utils/metrics';
+
+// Bot is slightly faster than user avg: add a small delta (5-12 WPM)
+function computeBotWpm(userAvg) {
+  const delta = Math.floor(Math.random() * 8) + 5; // 5–12 WPM faster
+  return userAvg + delta;
+}
 
 export default function Practice({ settings, setSettings }) {
   const navigate = useNavigate();
@@ -18,6 +27,9 @@ export default function Practice({ settings, setSettings }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [result, setResult] = useState(null);
+  // Bot mode state
+  const [botWpm, setBotWpm] = useState(null);
+  const [botWon, setBotWon] = useState(false);
 
   useEffect(() => {
     const retry = location.state?.retrySnippet;
@@ -52,9 +64,17 @@ export default function Practice({ settings, setSettings }) {
     [languages, settings.language]
   );
 
-  const onFinish = useCallback((raceResult) => { setResult(raceResult); }, []);
+  const onFinish = useCallback((raceResult) => {
+    setBotWon(false); // user finished — bot didn't win
+    setResult(raceResult);
+  }, []);
 
-  const { race, metrics, elapsedMs, inputRef, handleChange, restart, focus, shaking } = useTypingRace({
+  const onBotFinish = useCallback(() => {
+    // Only trigger if user hasn't finished yet
+    setBotWon(true);
+  }, []);
+
+  const { race, metrics, elapsedMs, inputRef, handleChange, handlePaste, closePasteModal, pasteBlocked, restart, focus, shaking } = useTypingRace({
     snippet: snippet?.code || '',
     language: selectedLanguage,
     difficulty: settings.difficulty,
@@ -69,13 +89,27 @@ export default function Practice({ settings, setSettings }) {
 
   function changeSetting(key, value) { setSettings(prev => ({ ...prev, [key]: value })); }
 
+  function handleBotWinRematch() {
+    setBotWon(false);
+    restart();
+    // Keep same botWpm for the rematch
+  }
+
   function startRace() {
     try {
       setError('');
       setResult(null);
+      setBotWon(false);
       setLoading(true);
       const generated = generateSnippet(settings.language, settings.snippetLength, settings.difficulty);
       setSnippet(generated);
+      // Compute bot WPM fresh for each new race
+      if (settings.vsBot) {
+        const userAvg = getUserAvgWpm();
+        setBotWpm(computeBotWpm(userAvg));
+      } else {
+        setBotWpm(null);
+      }
       setLoading(false);
       requestAnimationFrame(() => {
         setTimeout(() => inputRef.current?.focus(), 50);
@@ -134,6 +168,11 @@ export default function Practice({ settings, setSettings }) {
                 <Eye size={11} /> Zen Mode ON
               </span>
             )}
+            {settings.vsBot && (
+              <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium" style={{ background: 'rgba(139,92,246,0.08)', color: '#a78bfa', border: '1px solid rgba(139,92,246,0.2)' }}>
+                <Bot size={11} /> VS Bot ON
+              </span>
+            )}
           </div>
         </div>
         <RaceConfiguration
@@ -150,6 +189,18 @@ export default function Practice({ settings, setSettings }) {
 
   return (
     <main className="mx-auto max-w-7xl px-4 py-5 sm:px-6 sm:py-8">
+      {/* Paste Roast Modal */}
+      <PasteRoastModal visible={pasteBlocked} onClose={closePasteModal} />
+
+      {/* Bot Wins Modal */}
+      <BotWinsModal
+        visible={botWon}
+        botWpm={botWpm}
+        userWpm={metrics.wpm}
+        onRetry={handleBotWinRematch}
+        onNewSnippet={newSnippet}
+      />
+
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <Link
@@ -172,6 +223,11 @@ export default function Practice({ settings, setSettings }) {
               {settings.zenMode && !settings.instantDeath && (
                 <span className="ml-1 inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-bold" style={{ background: 'var(--accent-glow)', color: 'var(--accent)' }}>
                   <Eye size={9} /> ZEN
+                </span>
+              )}
+              {settings.vsBot && botWpm && (
+                <span className="ml-1 inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-bold" style={{ background: 'rgba(139,92,246,0.12)', color: '#a78bfa' }}>
+                  <Bot size={9} /> vs BOT {Math.round(botWpm)} WPM
                 </span>
               )}
             </div>
@@ -206,6 +262,18 @@ export default function Practice({ settings, setSettings }) {
         </div>
       )}
 
+      {/* Bot racer lane */}
+      {settings.vsBot && botWpm && (
+        <BotRacer
+          botWpm={botWpm}
+          targetLength={snippet?.code?.length || 1}
+          running={race.running}
+          finished={race.finished}
+          paused={pasteBlocked}
+          onBotFinish={onBotFinish}
+        />
+      )}
+
       {/* Hint bar: hidden during zen mode, always show WPM after finish */}
       {!zenActive && (
         <div
@@ -231,6 +299,7 @@ export default function Practice({ settings, setSettings }) {
           typed={race.typed}
           inputRef={inputRef}
           onChange={handleChange}
+          onPaste={handlePaste}
           onFocus={focus}
           disabled={race.finished}
         />

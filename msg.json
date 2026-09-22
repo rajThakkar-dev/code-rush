@@ -916,5 +916,27 @@
     "SkyNet has requested permanent surveillance rights, purely out of respectful curiosity.",
     "This speed suggests the machines didn't just lose, they took notes and went home humbled.",
     "Somewhere, a Terminator just quietly decided humanity might be fine after all, because of you."
+  ],
+  "anti_cheat": [
+    "Nice try, Ctrl+C! This is a typing test, not a clipboard showcase.",
+    "Copy pasting? What is next, asking Stack Overflow to take the test for you?",
+    "I saw that paste. Your keyboard is for typing, remember?",
+    "Wow, you found the paste shortcut. Outstanding move, but illegal here.",
+    "Pasting is a crime in this dojo. Use your fingers!",
+    "We measure keystrokes, not clipboard capacity.",
+    "Did you really just try to paste? My disappointment is immeasurable.",
+    "Cheat detected! Your Ctrl and V keys are looking very suspicious.",
+    "This is not a node_modules install, you cannot just copy everything.",
+    "A wild paste appeared! It is not very effective.",
+    "Pasting code? Are you a 10x dev or just a 1x plagiarist?",
+    "Oops! Your clipboard slipped. Try using those ten things on your hands.",
+    "Sorry, paste is on vacation. Only organic, locally-sourced keystrokes allowed.",
+    "Pasting? The ghost of Mavis Beacon is shaking her head.",
+    "Bold of you to assume paste would work. Start typing, friend!",
+    "Copy pasting in a typing test is like taking a taxi in a marathon.",
+    "Caught in 4k pasting! Keep your hands on the home row.",
+    "Your clipboard is full of lies. Type it out!",
+    "Error 403: Paste action forbidden. Reason: We actually want you to type.",
+    "Nice paste attempt! We will just pretend that did not happen and pause the timer."
   ]
 }

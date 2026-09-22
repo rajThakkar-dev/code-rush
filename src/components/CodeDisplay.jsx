@@ -18,7 +18,7 @@ function buildLines(target) {
   return lines;
 }
 
-export default function CodeDisplay({ target, typed, inputRef, onChange, onFocus, disabled = false }) {
+export default function CodeDisplay({ target, typed, inputRef, onChange, onFocus, onPaste, disabled = false }) {
   const cursorLineRef = useRef(null);
   const containerRef = useRef(null);
 
@@ -167,6 +167,7 @@ export default function CodeDisplay({ target, typed, inputRef, onChange, onFocus
           onChange={(e) => onChange(e.target.value)}
           onFocus={onFocus}
           onKeyDown={handleKeyDown}
+          onPaste={onPaste}
           disabled={disabled}
           spellCheck="false"
           autoCapitalize="off"

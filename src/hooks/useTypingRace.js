@@ -8,31 +8,60 @@ export function useTypingRace({ snippet, language, difficulty, lineCount, onFini
   const [race, setRace] = useState({ ...initialState, target: snippet || '' });
   const [now, setNow] = useState(0);
   const [shaking, setShaking] = useState(false);
+  const [pasteBlocked, setPasteBlocked] = useState(false); // shows the roast modal
   const inputRef = useRef(null);
   const completedRef = useRef(false);
   const deathTimeoutRef = useRef(null);
+  // Tracks accumulated paused time so elapsed is correct
+  const pausedAccumRef = useRef(0);
+  const pauseStartRef = useRef(null);
 
   useEffect(() => {
     setRace({ ...initialState, target: snippet || '' });
     completedRef.current = false;
+    pausedAccumRef.current = 0;
+    pauseStartRef.current = null;
   }, [snippet]);
 
   // Cleanup death timeout on unmount
   useEffect(() => () => clearTimeout(deathTimeoutRef.current), []);
 
+  // Continuously tick while running and not paused
   useEffect(() => {
-    if (!race.running) return undefined;
+    if (!race.running || pasteBlocked) return undefined;
     const id = setInterval(() => setNow(performance.now()), 50);
     return () => clearInterval(id);
-  }, [race.running]);
+  }, [race.running, pasteBlocked]);
 
-  const elapsedMs = race.startedAt ? Math.max(0, (race.stoppedAt || now || performance.now()) - race.startedAt) : 0;
+  // Pause / resume accounting
+  useEffect(() => {
+    if (!race.running) return;
+    if (pasteBlocked) {
+      // Record when we paused
+      if (pauseStartRef.current === null) {
+        pauseStartRef.current = performance.now();
+      }
+    } else {
+      // Resume: accumulate the paused duration
+      if (pauseStartRef.current !== null) {
+        pausedAccumRef.current += performance.now() - pauseStartRef.current;
+        pauseStartRef.current = null;
+      }
+    }
+  }, [pasteBlocked, race.running]);
+
+  const elapsedMs = race.startedAt
+    ? Math.max(0, (race.stoppedAt || now || performance.now()) - race.startedAt - pausedAccumRef.current - (pauseStartRef.current ? performance.now() - pauseStartRef.current : 0))
+    : 0;
+
   const metrics = useMemo(() => calculateMetrics(race.target, race.typed, elapsedMs), [race.target, race.typed, elapsedMs]);
 
   const finish = useCallback((finalRace) => {
     if (completedRef.current) return;
     completedRef.current = true;
-    const finalElapsed = Math.max(0, (finalRace.stoppedAt || performance.now()) - finalRace.startedAt);
+    // Compute final elapsed excluding paused time
+    const totalPaused = pausedAccumRef.current + (pauseStartRef.current ? performance.now() - pauseStartRef.current : 0);
+    const finalElapsed = Math.max(0, (finalRace.stoppedAt || performance.now()) - finalRace.startedAt - totalPaused);
     const finalMetrics = calculateMetrics(finalRace.target, finalRace.typed, finalElapsed);
     const result = {
       id: createId(), date: new Date().toISOString(), language: language?.key || '', languageName: language?.name || '', difficulty, lineCount,
@@ -49,8 +78,20 @@ export function useTypingRace({ snippet, language, difficulty, lineCount, onFini
     onFinish?.(result);
   }, [difficulty, language, lineCount, onFinish]);
 
+  // Handle paste: block it and show roast modal
+  const handlePaste = useCallback((e) => {
+    e.preventDefault();
+    setPasteBlocked(true);
+  }, []);
+
+  const closePasteModal = useCallback(() => {
+    setPasteBlocked(false);
+    requestAnimationFrame(() => inputRef.current?.focus());
+  }, []);
+
   const handleChange = useCallback((value) => {
     if (completedRef.current) return;
+    if (pasteBlocked) return; // ignore input while modal is open
 
     setRace((prev) => {
       if (prev.finished) return prev;
@@ -75,7 +116,7 @@ export function useTypingRace({ snippet, language, difficulty, lineCount, onFini
             setRace({ ...initialState, target: prev.target });
             requestAnimationFrame(() => inputRef.current?.focus());
           }, 400);
-          return next; // keep the wrong char visible briefly before reset
+          return next;
         }
       }
 
@@ -88,17 +129,20 @@ export function useTypingRace({ snippet, language, difficulty, lineCount, onFini
 
       return next;
     });
-  }, [finish, instantDeath]);
+  }, [finish, instantDeath, pasteBlocked]);
 
   const restart = useCallback(() => {
     clearTimeout(deathTimeoutRef.current);
     setShaking(false);
+    setPasteBlocked(false);
     completedRef.current = false;
+    pausedAccumRef.current = 0;
+    pauseStartRef.current = null;
     setRace({ ...initialState, target: snippet || '' });
     inputRef.current?.focus();
   }, [snippet]);
 
   const focus = useCallback(() => inputRef.current?.focus(), []);
 
-  return { race, metrics, elapsedMs, inputRef, handleChange, restart, focus, shaking };
+  return { race, metrics, elapsedMs, inputRef, handleChange, handlePaste, closePasteModal, pasteBlocked, restart, focus, shaking };
 }
