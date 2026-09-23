@@ -18,6 +18,9 @@ export default function BotRacer({ botWpm, targetLength, running, finished, paus
   const pausedProgressRef = useRef(0);
   const rafRef = useRef(null);
   const botFinishedRef = useRef(false);
+  // Mirror `finished` in a ref so the RAF tick always sees the latest value (avoid stale closure)
+  const finishedRef = useRef(finished);
+  useEffect(() => { finishedRef.current = finished; }, [finished]);
 
   // Reset on new race
   useEffect(() => {
@@ -65,7 +68,8 @@ export default function BotRacer({ botWpm, targetLength, running, finished, paus
 
       if (pct >= 100) {
         // Bot finished — fire callback once if user hasn't finished yet
-        if (!botFinishedRef.current && !finished) {
+        // Use finishedRef (not the stale `finished` closure variable) for correctness
+        if (!botFinishedRef.current && !finishedRef.current) {
           botFinishedRef.current = true;
           onBotFinish?.();
         }

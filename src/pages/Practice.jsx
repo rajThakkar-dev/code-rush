@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, Bot, CheckCircle2, Code2, Eye, RefreshCw, Settings2, Play, Skull } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { getLanguages } from '@whitep4nth3r/random-code';
@@ -30,6 +30,13 @@ export default function Practice({ settings, setSettings }) {
   // Bot mode state
   const [botWpm, setBotWpm] = useState(null);
   const [botWon, setBotWon] = useState(false);
+  // Snapshot user WPM at the moment bot wins so the display doesn't decay
+  const [frozenUserWpm, setFrozenUserWpm] = useState(0);
+  // Key to force-reset BotRacer on rematch with same snippet
+  const botRaceKeyRef = useRef(0);
+  const [botRaceKey, setBotRaceKey] = useState(0);
+  // Ref to latest metrics so onBotFinish can snapshot without stale closure
+  const metricsRef = useRef(null);
 
   useEffect(() => {
     const retry = location.state?.retrySnippet;
@@ -70,7 +77,8 @@ export default function Practice({ settings, setSettings }) {
   }, []);
 
   const onBotFinish = useCallback(() => {
-    // Only trigger if user hasn't finished yet
+    // Snapshot current WPM so it doesn't decay while modal is open
+    setFrozenUserWpm(metricsRef.current?.wpm ?? 0);
     setBotWon(true);
   }, []);
 
@@ -81,7 +89,12 @@ export default function Practice({ settings, setSettings }) {
     lineCount: snippet?.lineCount || 0,
     onFinish,
     instantDeath: settings.instantDeath,
+    // Freeze the timer when the bot wins so user WPM doesn't decay
+    frozenByBot: botWon,
   });
+
+  // Keep metricsRef up to date so onBotFinish can snapshot the latest value
+  useEffect(() => { metricsRef.current = metrics; }, [metrics]);
 
   useEffect(() => {
     if (result) navigate('/results', { state: { result, snippet }, replace: true });
@@ -91,6 +104,10 @@ export default function Practice({ settings, setSettings }) {
 
   function handleBotWinRematch() {
     setBotWon(false);
+    setFrozenUserWpm(0);
+    // Bump the key to hard-reset BotRacer even when targetLength hasn't changed
+    botRaceKeyRef.current += 1;
+    setBotRaceKey(botRaceKeyRef.current);
     restart();
     // Keep same botWpm for the rematch
   }
@@ -196,7 +213,7 @@ export default function Practice({ settings, setSettings }) {
       <BotWinsModal
         visible={botWon}
         botWpm={botWpm}
-        userWpm={metrics.wpm}
+        userWpm={frozenUserWpm}
         onRetry={handleBotWinRematch}
         onNewSnippet={newSnippet}
       />
@@ -265,6 +282,7 @@ export default function Practice({ settings, setSettings }) {
       {/* Bot racer lane */}
       {settings.vsBot && botWpm && (
         <BotRacer
+          key={botRaceKey}
           botWpm={botWpm}
           targetLength={snippet?.code?.length || 1}
           running={race.running}

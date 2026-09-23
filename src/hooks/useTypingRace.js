@@ -4,10 +4,12 @@ import { createId, STORAGE_KEYS, safeGet, safeSet } from '../utils/storage';
 
 const initialState = { target: '', typed: '', running: false, finished: false, startedAt: null, stoppedAt: null };
 
-export function useTypingRace({ snippet, language, difficulty, lineCount, onFinish, instantDeath = false }) {
+export function useTypingRace({ snippet, language, difficulty, lineCount, onFinish, instantDeath = false, frozenByBot = false }) {
   const [race, setRace] = useState({ ...initialState, target: snippet || '' });
   const [now, setNow] = useState(0);
   const [shaking, setShaking] = useState(false);
+  // Capture the exact elapsed time the moment the bot wins so it doesn't keep growing
+  const frozenElapsedRef = useRef(null);
   const [pasteBlocked, setPasteBlocked] = useState(false); // shows the roast modal
   const inputRef = useRef(null);
   const completedRef = useRef(false);
@@ -21,17 +23,29 @@ export function useTypingRace({ snippet, language, difficulty, lineCount, onFini
     completedRef.current = false;
     pausedAccumRef.current = 0;
     pauseStartRef.current = null;
+    frozenElapsedRef.current = null;
   }, [snippet]);
 
   // Cleanup death timeout on unmount
   useEffect(() => () => clearTimeout(deathTimeoutRef.current), []);
 
-  // Continuously tick while running and not paused
+  // Continuously tick while running, not paused, and not frozen by a bot win
   useEffect(() => {
-    if (!race.running || pasteBlocked) return undefined;
+    if (!race.running || pasteBlocked || frozenByBot) return undefined;
     const id = setInterval(() => setNow(performance.now()), 50);
     return () => clearInterval(id);
-  }, [race.running, pasteBlocked]);
+  }, [race.running, pasteBlocked, frozenByBot]);
+
+  // When the bot wins, capture elapsedMs at that exact moment so it never grows
+  useEffect(() => {
+    if (frozenByBot && race.running && race.startedAt && frozenElapsedRef.current === null) {
+      const totalPaused = pausedAccumRef.current + (pauseStartRef.current ? performance.now() - pauseStartRef.current : 0);
+      frozenElapsedRef.current = Math.max(0, performance.now() - race.startedAt - totalPaused);
+    }
+    if (!frozenByBot) {
+      frozenElapsedRef.current = null;
+    }
+  }, [frozenByBot, race.running, race.startedAt]);
 
   // Pause / resume accounting
   useEffect(() => {
@@ -50,9 +64,14 @@ export function useTypingRace({ snippet, language, difficulty, lineCount, onFini
     }
   }, [pasteBlocked, race.running]);
 
-  const elapsedMs = race.startedAt
-    ? Math.max(0, (race.stoppedAt || now || performance.now()) - race.startedAt - pausedAccumRef.current - (pauseStartRef.current ? performance.now() - pauseStartRef.current : 0))
-    : 0;
+  const elapsedMs = (() => {
+    if (!race.startedAt) return 0;
+    // If frozen by a bot win, return the captured snapshot so WPM doesn't decay
+    if (frozenElapsedRef.current !== null) return frozenElapsedRef.current;
+    const base = race.stoppedAt || now || performance.now();
+    const totalPaused = pausedAccumRef.current + (pauseStartRef.current ? performance.now() - pauseStartRef.current : 0);
+    return Math.max(0, base - race.startedAt - totalPaused);
+  })();
 
   const metrics = useMemo(() => calculateMetrics(race.target, race.typed, elapsedMs), [race.target, race.typed, elapsedMs]);
 
